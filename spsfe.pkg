@@ -1,6 +1,6 @@
 v 1
 
-d Fitting the  spatial stochastic frontier models with endogenous frontier and 
+d Fitting the spatial stochastic frontier models with endogenous frontier and 
 d environmental variables
 
 f spsfe.ado 
@@ -9,7 +9,4 @@ f spsfe_p.ado
 
 f spsfe1.dta 
 f spsfe2.dta 
-f w_ex1.mmat 
-
-URL: https://github.com/hfusn1/spsfe/blob/main/spsfe.ado
-
+f w_ex1.mmat
