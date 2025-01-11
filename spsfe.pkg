@@ -6,8 +6,8 @@ d environmental variables
 f spsfe.ado 
 f spsfe.sthlp 
 f spsfe_p.ado 
-f lspsfe.mlib
+f https://github.com/hfusn1/spsfe/raw/refs/heads/main/lspsfe.mlib
 f spsfe_postestimation.sthlp
-f spsfe1.dta 
-f spsfe2.dta 
-f w_ex1.mmat
+f https://github.com/hfusn1/spsfe/raw/refs/heads/main/spsfe1.dta 
+f https://github.com/hfusn1/spsfe/raw/refs/heads/main/spsfe2.dta 
+f https://github.com/hfusn1/spsfe/raw/refs/heads/main/w_ex1.mmat
