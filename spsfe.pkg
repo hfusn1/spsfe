@@ -3,11 +3,11 @@ v 1
 d Fitting the spatial stochastic frontier models with endogenous frontier and 
 d environmental variables
 
-f https://raw.githubusercontent.com/hfusn1/spsfe/refs/heads/main/spsfe.ado 
-f https://raw.githubusercontent.com/hfusn1/spsfe/refs/heads/main/spsfe.sthlp 
-f https://raw.githubusercontent.com/hfusn1/spsfe/refs/heads/main/spsfe_p.ado
-f https://github.com/hfusn1/spsfe/raw/refs/heads/main/lspsfe.mlib
-f https://raw.githubusercontent.com/hfusn1/spsfe/refs/heads/main/spsfe_postestimation.sthlp
-f https://github.com/hfusn1/spsfe/raw/refs/heads/main/spsfe1.dta 
-f https://github.com/hfusn1/spsfe/raw/refs/heads/main/spsfe2.dta 
-f https://github.com/hfusn1/spsfe/raw/refs/heads/main/w_ex1.mmat
+f spsfe.ado 
+f spsfe.sthlp 
+f spsfe_p.ado
+f lspsfe.mlib
+f spsfe_postestimation.sthlp
+f spsfe1.dta 
+f spsfe2.dta 
+f w_ex1.mmat
