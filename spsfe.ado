@@ -401,9 +401,10 @@ if (`"`endvars'"'!="") local lnsigv lnsigw
 // 	local sendoutvar `sendoutvar' Wu_`v'
 //   }
 
-
+   if ("`wmat'"!="" | "`wymat'"!=""){
    eret scalar rmin=$rmin
    eret scalar rmax=$rmax
+   }
    ereturn local ivlist `ivlist'
    ereturn local endvars `endvars'
    ereturn local cost `cost'
@@ -848,8 +849,10 @@ local lfd0 = cond("`epost'"=="","lf","d0")
    ereturn local function = cond("`cost'"!="","cost","production")
    ereturn local distribution=cond("`truncate'"=="","half normal","truncated normal")  
    ereturn local predict = "spsfe_p"
+   if ("`wmat'"!="" | "`wymat'"!=""){
    ereturn scalar rmin = $rmin
    ereturn scalar rmax = $rmax  
+   }
    local ii1 1
    forval i=1/7{
 	   if "eq`i'"!=""{
@@ -1162,8 +1165,10 @@ if (`"`endvars'"'!="") local lnsigv lnsigw
 		local ii1 = `ni' + 1
 	   }
    }
+      if ("`wmat'"!="" | "`wymat'"!=""){
    eret scalar rmin=$rmin
    eret scalar rmax=$rmax
+	  }
 if ("`wmat'"!="" | "`wymat'"!=""){
     global tranparametrs diparm(Wy, label("rho") prob function($rmin/(1+exp(@))+$rmax*exp(@)/(1+exp(@))) d(exp(@)*(($rmax-$rmin)/(1+exp(@))^2)))
 }
