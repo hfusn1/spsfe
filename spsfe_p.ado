@@ -1,5 +1,5 @@
-* This Stata package is licensed under GPL-3.
-* See the LICENSE file for full details.
+*2025-04-04
+*! version 1.0.0
 
 capture program drop spsfe_p
 program define spsfe_p
@@ -106,7 +106,7 @@ if "`ste'"!=""{
 		
 		qui gen double `sigma2' = exp(2*`lnsigmav') + exp(2*`lnsigmau')
 		//qui gen double `lambda' = exp(2*`lnsigmau')/ `sigma'
-		qui gen double `mustar' = (exp(2*`lnsigmav') *`mu' - exp(2*`lnsigmau')*`omega')/`sigma2'
+		qui gen double `mustar' = (exp(2*`lnsigmav') *`mu'*exp(`lnsigmau') - exp(2*`lnsigmau')*`omega')/`sigma2'
 		qui gen double `sigma2s' = exp(2*`lnsigmav')* exp(2*`lnsigmau')/`sigma2'
 		
 		if "`u'"!=""{

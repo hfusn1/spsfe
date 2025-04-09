@@ -132,7 +132,7 @@ Luojia Wang{break}
 Xiamen University{break}
 School of Management{break}
 China{break}
-
+{browse "ljwang@stu.xmu.edu.cn":ljwang@stu.xmu.edu.cn}{break}
 
 
 {title:Also see}

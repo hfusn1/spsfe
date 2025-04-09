@@ -1,5 +1,5 @@
 {smcl}
-{cmd:help spsfe}
+{cmd:help spsfe}{right:also see:  {help spsfe postestimation}}
 {hline}
 
 {title:Title}
@@ -16,7 +16,7 @@
 Estimation syntax
 
 {p 8 17 2}
-{cmd:spsfe} {depvar} [{indepvars}] [{cmd:,} {it:options}]
+{cmd:spsfe} {depvar} {indepvars} {cmd:,} {cmd:uhet(}{it:varlist} [{cmd:,} {opt nocons:tant}]{cmd:)} [{it:options}]
 
 {pstd}
 Version syntax
@@ -28,19 +28,18 @@ Version syntax
 Replay syntax
 
 {p 8 17 2}
-{cmd:spsfe} [{cmd:,} {cmdab:l:evel(}{help level##remarks:{it:#}}{cmd:)}]
-
+{cmd:spsfe} [{cmd:,}  {cmdab:l:evel(}{help level##remarks:{it:#}}{cmd:)}]
 
 {synoptset 31 tabbed}{...}
 {synopthdr}
 {synoptline}
 {syntab :Data structure}
 
-{phang}
-{cmd: id({it:varname})} specifies cross-sectional id variable. 
 
-{phang}
-{cmd: time({it:varname})} specifies time variable. It must be specified for panel data. If not, the data is assumed to be cross-sectional. 
+{synopt : {cmd: id({it:varname})}} defines the id variable for panel data structure. If this option is omitted, the dataset defaults to single-series time structure interpretation{p_end}
+
+
+{synopt : {cmd: time({it:varname})}} specifies the time variable. Mandatory when working with panel data. If this option is omitted, the data structure defaults to cross-sectional analysis{p_end}
 
 {syntab :Frontier}
 {synopt :{opt nocons:tant}}suppress constant term{p_end}
@@ -50,22 +49,19 @@ in the frontier function{p_end}
 
 {syntab : Ancillary equations}
 {synopt :{cmd:uhet(}{it:varlist} [{cmd:,} {opt nocons:tant}]{cmd:)}}
-specify explanatory
-variables for the inefficiency variance function; 
-use {opt noconstant}
-to suppress constant term{p_end}
+(required) specifies that the variance of the inefficiency component is heteroskedastic and must be explicitly modeled through covariates in {it:varlist}. These covariates directly characterize the factors driving inefficiency heterogeneity. The variance function includes a constant by default; specify {opt noconstant} to exclude it term{p_end}
 
 {synopt :{cmd:vhet({it:varlist})}}
 specify explanatory
 variables for the idiosyncratic error variance function.{p_end}
 
 {syntab :Spatial setting}
-{synopt :{cmdab:wm:at(}{it:W1 [W2...WT][,mata array]}{cmd:)}}specify spatial weight matrix{p_end}
+{synopt :{cmdab:wm:at(}[{it:filename}] [W1 W2 ... WT][,mata array dta]{cmd:)}}specify spatial weight matrix{p_end}
 
-{synopt :{cmdab:wym:at(}{it:W1 [W2...WT][,mata array]}{cmd:)}}specify spatial weight matrix for 
+{synopt :{cmdab:wym:at(}[{it:filename}] [W1 W2 ... WT][,mata array dta]{cmd:)}}specify spatial weight matrix for 
 spatial lag term{p_end}
 
-{synopt :{cmdab:wxm:at(}{it:W1 [W2...WT][,mata array]}{cmd:)}}specify spatial weight matrix for 
+{synopt :{cmdab:wxm:at(}[{it:filename}] [W1 W2 ... WT][,mata array dta]{cmd:)}}specify spatial weight matrix for 
 spatial Durbin terms in the frontier{p_end}
 
 
@@ -79,14 +75,15 @@ spatial Durbin terms in the frontier{p_end}
 {synopt :{opt mlplot}}use ml plot to find better initial values{p_end}
 {synopt :{cmd:mlmodel(}{it:{help ml##model_options:model_options}}{cmd:)}}control {cmd:ml model} options{p_end}
 {synopt :{cmd:mlmax({it:{help ml##ml_maximize_options:maximize_options}})}}control {cmd:ml maximize} options{p_end}
-{synopt :{opt delmissing}}delete the units with missing observations from spmatrix{p_end}
+{synopt :{opt delmissing}}delete the units with missing observations from spmatrix. Required if the data has missing value{p_end}
 
 {syntab :Reporting}
 {synopt :{cmd:nolog}}omit the display of the criterion function iteration log{p_end}
-{synopt :{cmd:mex({it:varlist})}}reports marginal effects of variables in the frontier{p_end}
+{synopt :{cmd:mex(}{it:varlist}{cmd:)}}is required for calculation of total, direct, and indirect marginal effects for the specified variables in the frontier function. Omit this option if marginal effects are not needed{p_end}
 {synopt :{cmdab:mldis:play(}{it:{help ml##display_options:display_options}}{cmd:)}}control {cmd:ml display} options; seldom used{p_end}
 {synopt :{cmd:te(}{it:{help newvar:effvar}}{cmd:)}}create efficiency variables{p_end}
-{synopt :{opt genwxvars}}generate the spatial Durbin terms in the frontier function{p_end}
+{synopt :{opt genwxvars}}generates the spatial Durbin and spatial lag terms in the specified model. It is required for the postestimation of
+(in)efficiency when spatial dependence is included{p_end}
 
 {syntab :Other}
 {synopt :{cmdab:constraints(}{it:{help estimation options##constraints():constraints}}{cmd:)}}apply specified linear constraints{p_end}
@@ -102,11 +99,7 @@ features available after estimation.{p_end}
 {title:Description}
 
 {pstd}
-{opt spsfe} fits spatial stochastic production or cost frontier models
-following the methodology of 
-{help spsfe##Kutlu2020:{bind:Kutlu et al. (2020)}}. See 
-{help spsfe##Kutlu2020:{bind:Kutlu et al. (2020)}} for a detailed
-explanation of the methodology and empirical analyses.
+{opt spsfe} implements spatial stochastic frontier models that simultaneously address endogeneity in frontier/environmental variables and spatial spillovers using the methodology of {help spsfe##Kutlu2020:{bind:Kutlu et al. (2020)}}. It supports production/cost frontiers with spatial autoregressive (SAR) terms, endogenous regressors via a control function approach, and time-varying spatial weight matrices. The command provides spillover-adjusted efficiency estimates, decomposes marginal effects into direct/indirect components, and allows heteroskedasticity modeling for inefficiency. It generalizes the traditional stochastic frontier analysis by incorporating spatial dependence structures while correcting biases from endogenous covariates.
 
 
 {marker options}{...}
@@ -115,7 +108,7 @@ explanation of the methodology and empirical analyses.
 {dlgtab:Data structure}
 
 {phang}
-{cmd: id({it:varname})} specifies cross-sectional id variable. 
+{cmd: id({it:varname})} specifies cross-sectional id variable. If this option is omitted, the dataset defaults to single-series.
 
 {phang}
 {cmd: time({it:varname})} specifies time variable. It must be specified for panel data. If not, the data is assumed to be cross-sectional. 
@@ -150,25 +143,32 @@ with the variance expressed as a function of the covariates defined in
 {dlgtab:Spatial weight matrix}
 
 {phang}
-{opt wmat(W1 [W2 ... WT][,mata array])} specifies that the spatial weight matrices. If specified, 
+{cmdab:wm:at(}[{it:filename}] [W1 W2 ... WT][,mata array dta]{cmd:)} specifies that the spatial weight matrices. If specified, 
 all spatial terms are assumed with the same weight matrices. 
 
 {phang}
-By default, the weight matrices are Sp object. mata declares weight matrices are mata matrix. 
-If one weight matrix is specified, it assumes time-constant weight matrix. 
-For time-varying cases, T weight matrices should be specified in time order. 
-Alternatively, using array to declares weight matrices are store in a array.  
-If only one matrix is stored in the specified array, the time-constant weight matrix is assumed.  
-Otherwise, the keys of the array specifies time information and 
-the values store time-specific weight matrices.  
+By default, weight matrices are {cmd:Sp objects}. Specifying {cmd:mata} declares weight matrices as Mata matrices. When a single weight matrix (W1) is specified, it assumes a time-constant structure.
+For time-varying cases, weight matrices (W1 W2 ... WT) must be specified in chronological order.
+
+{phang}
+Alternatively, use {cmd:array} to declare weight matrices stored in a Mata array.
+When the specified array contains a single matrix, time-constant weights are assumed.
+Otherwise, array keys define temporal identifiers while array values contain time-specific weight matrices.
+
+{phang}
+The {cmd:dta} option supports (time-)sparse matrix specifications. 
+The data can be entered either from a local file or from a data frame (with the prefix {cmd:frame:}). 
+The variables id_i, id_j, and weight in the dta file are mandatory when using dta. 
+Time-varing sparse matrices require .dta variables ordered as: time, id_i, id_j, weight - where id_i/id_j are fixed variable names.
+For time-constant sparse matrices, the time variable is omitted.
 
 
 {phang}
-{opt wymat(W1 [W2 ... WT][,mata array])} specifies that the spatial weight matrices 
+{cmdab:wym:at(}[{it:filename}] [W1 W2 ... WT][,mata array dta]{cmd:)} specifies that the spatial weight matrices 
 for the Spatial lag of the independent variable. 
 
 {phang}
-{opt wxmat(W1 [W2 ... WT][,mata array])} specifies that the spatial weight matrices 
+{cmdab:wxm:at(}[{it:filename}] [W1 W2 ... WT][,mata array dta]{cmd:)} specifies that the spatial weight matrices 
 for the Spatial Durbin terms in the frontier function. 
 
 
@@ -217,7 +217,7 @@ initial values. The default is to use {helpb ml search:ml search} with default o
 {cmd:ml max} options; it is seldom used.
 
 {phang}
-{opt delmissing} deletes the units with missing observations from spmatrix.
+{opt delmissing} deletes the units with missing observations from spmatrix. It is required to state that the data has missing value.
 
 {dlgtab:Reporting}
 
@@ -225,8 +225,7 @@ initial values. The default is to use {helpb ml search:ml search} with default o
 {cmd:nolog} suppresses the display of the criterion function iteration log.
 
 {phang}
-{cmd:mex({it:varlist})} reports total, direct and indirect 
-marginal effects of variables in the frontier function.
+{cmd:mex(}{it:varlist}{cmd:)} is required for calculation of total, direct, and indirect marginal effects for the specified variables in the frontier function. These effects are computed during estimation and stored in the following matrices returned by {cmd:e(totalmargins)}, {cmd:e(directmargins)}, and {cmd:e(indirectmargins)}. Computation of marginal effects requires additional processing time. Omit this option if marginal effects are not needed.
 
 {phang}
 {cmd:mldisplay({it:{help ml##mldisplay:display_options}})} controls the
@@ -237,9 +236,8 @@ marginal effects of variables in the frontier function.
 the production or cost efficiency variable.
 
 {phang}
-{cmd:genwxvars} generates the spatial Durbin terms. 
-The option automatically extends any specified variable name in wxvars() 
-with Wx_ prefix.
+{cmd:genwxvars} generates both spatial Durbin and spatial lag terms in the specified model. It automatically appends the {cmd:Wx\_} prefix to variables declared in {cmd:wxvars()}, and is required for post-estimation analyses when spatial dependence components are included in the model framework.
+
 
 
 {marker optionsversion}{...}
@@ -270,12 +268,12 @@ specifies linear constraints for the estimated model.
     
     {pstd}
     Setup{p_end}
-    {phang2}{bf:. {stata "mata mata matuse w_ex1,replace"}}{p_end}
+    {phang2}{bf:. {stata "spmatrix use M1 using M1.stswm"}}{p_end}
     {phang2}{bf:. {stata "use spsfe1.dta"}}{p_end}
     
     {pstd}
     Stochastic Stoch. production model {p_end}
-    {phang2}{bf:. {stata "spsfe y x,  uhet(z) noconstant  id(id) time(t)"}}{p_end}
+    {phang2}{bf:. {stata "spsfe y x, wxmat(M1) wxvars(x) uhet(z) noconstant id(id) time(t)"}}{p_end}
     
     
    
@@ -283,12 +281,12 @@ specifies linear constraints for the estimated model.
 
     {pstd}
     Setup{p_end}
-    {phang2}{bf:. {stata "mata mata matuse w_ex1,replace"}}{p_end}
+    {phang2}{bf:. {stata "mata mata matuse w_ex1"}}{p_end}
     {phang2}{bf:. {stata "use spsfe2.dta"}}{p_end}
 
     {pstd}
     Stochastic Stoch. production model {p_end}
-    {phang2}{bf:. {stata "spsfe y x, wmat(wm,mata) wxvars(x) uhet(z) noconstant endvars(x z) iv(q1 q2) id(id) time(t)"}}{p_end}
+    {phang2}{bf:. {stata "spsfe y x, wmat(time_W,array) wxvars(x) uhet(z) noconstant endvars(x z) iv(q1 q2) id(id) time(t)"}}{p_end}
 
   
 
@@ -335,6 +333,9 @@ specifies linear constraints for the estimated model.
 {synoptset 20 tabbed}{...}
 {p2col 5 20 24 2: Matrices}{p_end}
 {synopt:{cmd:e(b)}}coefficient vector{p_end}
+{synopt:{cmd:e(totalmargins)}}Total marginal effects (if {cmd:mex()} specified){p_end}
+{synopt:{cmd:e(directmargins)}}Direct marginal effects (if {cmd:mex()} specified){p_end}
+{synopt:{cmd:e(indirectmargins)}}Indirect marginal effects (if {cmd:mex()} specified){p_end}
 {synopt:{cmd:e(ilog)}}iteration log (up to 20 iterations){p_end}
 {synopt:{cmd:e(gradient)}}gradient vector{p_end}
 {synopt:{cmd:e(V)}}variance-covariance matrix of the estimators{p_end}
@@ -395,10 +396,17 @@ Department of Statistical Sciences “Paolo Fortunati”{break}
 Italy{break}
 {browse "federica.galli14@unibo.it":federica.galli14@unibo.it}{break}
 
+{pstd}
+Luojia Wang{break}
+Xiamen University{break}
+School of Management{break}
+China{break}
+{browse "ljwang@stu.xmu.edu.cn":ljwang@stu.xmu.edu.cn}{break}
+
 
 {marker see}{...}
 {title:Also see}
 
 {p 7 14 2}{manhelp frontier R}, 
 {manhelp xtfrontier XT}{p_end} 
-{p 7 14 2}{helpb sfpanel}, {helpb sfkk},  {helpb nwxtregress} (if installed)
+{p 7 14 2}{helpb spsfe_postestimation}, {helpb sfpanel}, {helpb sfkk},  {helpb nwxtregress} (if installed)

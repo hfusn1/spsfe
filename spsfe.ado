@@ -1,5 +1,8 @@
-* This Stata package is licensed under GPL-3.
-* See the LICENSE file for full details.
+*! version 1.0.3 2025-04-04
+*! version 1.0.2 2025-03-31
+*! version 1.0.1 2025-03-25
+*! version 1.0.0  2025-03-12
+
 
 * todo  genweff // mata:genweff [I-rhoW]^(-1)
 capture program drop spsfe
@@ -170,9 +173,10 @@ marksample touse
 foreach v in `endvars'{
 	local etaterm `etaterm' /eta_`v'
 }
-
+local eq7
 foreach v in `endvars'{
 	local surterm `surterm' (`v': `v'=`iv')
+	local eq7 `eq7' `iv' _con
 }
 
 
@@ -196,12 +200,6 @@ if ("`delve'"!="" & "`mlsearch'"!=""){
 }
 
 
-	parsespmat0 `wymat' 
-	parsespmat1 `wymat' `r(ldot)' aname(w_ina)
-	local nw = r(nw)	
-
-
-
 
 // examine the data and spmatrix
 if "`id'"==""{
@@ -223,17 +221,30 @@ if "`time'"==""{
 	qui distinct2 `time'
 	local T = r(ndistinct)	
 
+	tempvar time2 id2 
+	qui egen `time2' = group(`time')
+    qui egen `id2' = group(`id')
+	//global paneltvar `time2'
+	//mata mata describe
+
+    global id0__ `id'
+    global time0__ `time'
+    global id2__ `id2'
+    global time2__ `time2'
+
+
 //	mata: marksuse = st_data(.,"`touse'")
     mata: _order_0   = st_data(.,"`order0'","`touse'") // record the row# in the original data	
+
+	parsespmat0 `wymat' 
+	parsespmat1 `wymat' `r(ldot)' aname(w_ina)
+	local nw = r(nw)	
 
 	if ( `nw'!=1 & `nw'!=`T') {
 		di as error "Spatial weight matrixs in wymat() are specified as time-varying, but # of spmatrix != # of periods"
 		exit 198
 	}    
-	tempvar time2
-	qui egen `time2' = group(`time')
-	//global paneltvar `time2'
-	//mata mata describe
+
 
 	qui count if `touse'==0
 	local nummissing = r(N)
@@ -350,7 +361,22 @@ if (`"`endvars'"'!="") local lnsigv lnsigw
             (frontier:`yvar' =  `wxvars2' `xvars',`noconstant') ///
             (`lnsigv': `vhet')  (lnsigu: `uhet') `mu' ///
 	        (Wy:) `etaterm' `surterm', nopreserve `cns' `mlmodelopt' title(`title')
-	
+
+
+	local eq1 `wxvars2' `xvars'
+	if "`noconstant'"=="" local eq1 `wxvars2' `xvars' _cons
+	local eq2 `vhet' _cons 
+	local eq3 `uhet'
+	local nocons = usubstr("`uhet'",strpos("`uhet'",",")+1,.)
+	if "`nocons'"==""|"`nocons'"=="." local eq3 `uhet' _cons
+	local eq4 `mu'
+	local eq5 Wy
+	local eq6 `etaterm' 
+
+
+
+
+
 	
 	if("`initial'"=="" & "`delve'"!="") { 
 		ml init b0,copy
@@ -371,13 +397,16 @@ if (`"`endvars'"'!="") local lnsigv lnsigw
 	local sendoutvar `sendoutvar' Wx_`v'
   }
 
-foreach v in `wuvars'{
-	local sendoutvar `sendoutvar' Wu_`v'
-  }
+// foreach v in `wuvars'{
+// 	local sendoutvar `sendoutvar' Wu_`v'
+//   }
 
 
-
-
+   eret scalar rmin=$rmin
+   eret scalar rmax=$rmax
+   ereturn local ivlist `ivlist'
+   ereturn local endvars `endvars'
+   ereturn local cost `cost'
    ereturn local cmd spsfe
    ereturn local spatialwvars wy_`yvar' `sendoutvar'
    ereturn local endvars `endvars'
@@ -386,13 +415,33 @@ foreach v in `wuvars'{
    ereturn local depvar `yvar'
    ereturn local function = cond("`cost'"!="","cost","production")
    ereturn local distribution=cond("`truncate'"=="","half normal","truncated normal") 
-   
-   global tranparametrs
-   Replay , `diopts'
+   local ii1 1
+   forval i=1/7{
+	   if "eq`i'"!=""{
+		local ni : word count `eq`i''
+		local ni = `ni' - 1 + `ii1'
+		local eq`i' `ii1'..`ni'
+		eret local eq`i' `eq`i''
+		local ii1 = `ni' + 1
+	   }
+   }
 
+if ("`wmat'"!="" | "`wymat'"!=""){
+    global tranparametrs diparm(Wy, label("rho") prob function($rmin/(1+exp(@))+$rmax*exp(@)/(1+exp(@))) d(exp(@)*(($rmax-$rmin)/(1+exp(@))^2)))
+}
+else {
+    global tranparametrs ""
+}
+
+
+
+   Replay , `diopts'
+   
    //global tranparametrs diparm(Wy, label("rho") prob function($rmin/(1+exp(@))+$rmax*exp(@)/(1+exp(@))) d(exp(@)*(($rmax-$rmin)/(1+exp(@))^2)))  
    //Replay , `diopts'
-
+/*
+global tranparametrs
+   Replay , `diopts'
      di " "
      di in gre "Note: rho = 1/(rmin+rmin*exp(Wy:_cons))+exp(Wy:_cons)/(rmax+rmax*exp(Wy:_cons)); "
      di in gre "      where rmin and rmax are the minimum and maximum eigenvalues of sp matrix"
@@ -403,10 +452,20 @@ foreach v in `wuvars'{
                */ _col(21) "Coef." _col(29) "Std. Err." _col(44) "t" /*
                */ _col(49) "P>|t|" _col(59) "[95% Conf. Interval]"
           di in smcl in gr "{hline 13}{c +}{hline 64}"
-		  _diparm Wy, label("rho") prob function($rmin/(1+exp(@))+$rmax*exp(@)/(1+exp(@))) d(exp(@)*(($rmax-$rmin)/(1+exp(@))^2))
 
+          di in smcl in gr "{hline 13}{c +}{hline 64}"
+	_diparm Wy, label("rho") prob function($rmin/(1+exp(@))+$rmax*exp(@)/(1+exp(@))) d(exp(@)*(($rmax-$rmin)/(1+exp(@))^2))
+	 di " "
+	 di in gre "Note: rho = 1/(rmin+rmin*exp(Wy:_cons))+exp(Wy:_cons)/(rmax+rmax*exp(Wy:_cons)); "
+     di in gre "      where rmin and rmax are the minimum and maximum eigenvalues of sp matrix"
+*/	
+
+if ("`wmat'"!="" | "`wymat'"!=""){
+local wy_cons = _b[Wy:_cons]
+local rho = 1 / ($rmin + $rmin * exp(`wy_cons')) + exp(`wy_cons') / ($rmax + $rmax * exp(`wy_cons'))
+}
   
-   local rho = r(est)
+   //local rho = r(est)
    local rhose = r(se)
    ereturn scalar rho = `rho'
    ereturn scalar rho_se = `rhose' 
@@ -643,14 +702,23 @@ if ("`time'"==""){
 	//tempvar time2
 	qui distinct2 `time'
 	local T = r(ndistinct)	
+
+	tempvar time2 id2
+	qui egen `time2' = group(`time')
+    qui egen `id2' = group(`id')
+
+    global id0__ `id'
+    global time0__ `time'
+    global id2__ `id2'
+    global time2__ `time2'
+	//global paneltvar `time2'
+	//mata mata describe
+
+
 //mata mata describe
 //	mata: marksuse = st_data(.,"`touse'")
     mata: _order_0   = st_data(.,"`order0'","`touse'") // record the row# in the original data	
    
-	tempvar time2
-	qui egen `time2' = group(`time')
-	//global paneltvar `time2'
-	//mata mata describe
 
 	qui count if `touse'==0
 	local nummissing = r(N)
@@ -699,9 +767,10 @@ else{
 	foreach v in `endvars'{
 		local etaterm `etaterm' /eta_`v'
 	}
-
+	local eq7
 	foreach v in `endvars'{
 		local surterm `surterm' (`v': `v'=`iv')
+		local eq7 `eq7' `iv' _con
 	}
 	if `"`endvars'"'!=""{
 		local epost _end	
@@ -748,6 +817,15 @@ local lfd0 = cond("`epost'"=="","lf","d0")
 //mata mata describe
 	ml model `lfd0' sfscal`dist'`epost'() (frontier: `yvar'= `wxvars2' `xvars', `noconstant') ///
 	 (`lnsigv': `vhet') (lnsigu: `uhet') `mu' `etaterm' `surterm', nopreserve `cns' `mlmodelopt' title(`title')
+	local eq1 `wxvars2' `xvars'
+	if "`noconstant'"=="" local eq1 `wxvars2' `xvars' _cons
+	local eq2 `vhet' _cons
+	local eq3 `uhet'
+	local nocons = usubstr("`uhet'",strpos("`uhet'",",")+1,.)
+	if "`nocons'"==""|"`nocons'"=="." local eq3 `uhet' _cons
+	local eq4 `mu'
+	local eq5 
+	local eq6 `etaterm'
 
 	if("`initial'"=="" & "`delve'"!="") { 
 		ml init b0,copy
@@ -759,6 +837,9 @@ local lfd0 = cond("`epost'"=="","lf","d0")
    local mlmaxopt: list uniq mlmaxopt   
    `nolog' ml max, `mlmaxopt' 
 
+   ereturn local ivlist `ivlist'
+   ereturn local endvars `endvars'
+   ereturn local cost `cost'   
    ereturn local cmd spsfe
    ereturn local endvars `endvars'
    ereturn local cmdbase ml
@@ -766,7 +847,19 @@ local lfd0 = cond("`epost'"=="","lf","d0")
    ereturn local depvar `yvar'
    ereturn local function = cond("`cost'"!="","cost","production")
    ereturn local distribution=cond("`truncate'"=="","half normal","truncated normal")  
-   ereturn local predict = "spsfe_p"  
+   ereturn local predict = "spsfe_p"
+   ereturn scalar rmin = $rmin
+   ereturn scalar rmax = $rmax  
+   local ii1 1
+   forval i=1/7{
+	   if "eq`i'"!=""{
+		local ni : word count `eq`i''
+		local ni = `ni' - 1 + `ii1'
+		local eq`i' `ii1'..`ni'
+		ereturn local eq`i' `eq`i''
+		local ii1 = `ni' + 1
+	   }
+   }
    Replay , `diopts'	
 
   restore
@@ -846,9 +939,9 @@ if ("`delve'"!="" & "`mlsearch'"!=""){
 
 
 
-parsespmat0 `wmat' 
-parsespmat1 `wmat' `r(ldot)' aname(w_ina)
-local nw = r(nw)
+// parsespmat0 `wmat' 
+// parsespmat1 `wmat' `r(ldot)' aname(w_ina) normalize(`normalize')
+// local nw = r(nw)
 
 // 检查权重矩阵与数据是否匹配
 if "`id'"==""{
@@ -868,16 +961,30 @@ if ("`time'"==""){
 
 	qui distinct2 `time'
 	local T = r(ndistinct)	
+
+	tempvar time2 id2 
+	qui egen `time2' = group(`time')
+    qui egen `id2' = group(`id')
+	//global paneltvar `time2'
+	//mata mata describe
+
+    global id0__ `id'
+    global time0__ `time'
+    global id2__ `id2'
+    global time2__ `time2'
+
 //mata mata describe
 //	mata: marksuse = st_data(.,"`touse'")
     mata: _order_0   = st_data(.,"`order0'","`touse'") // record the row# in the original data	
+	parsespmat0 `wmat' 
+	parsespmat1 `wmat' `r(ldot)' aname(w_ina) normalize(`normalize')
+	local nw = r(nw)
 
 	if (`nw'!=1 & `nw'!=`T') {
 		di as error "Spatial weight matrixs in wmat() are specified as time-varying, but # of spmatrix != # of periods"
 		exit 198
 	}    
-	tempvar time2
-	qui egen `time2' = group(`time')
+
 	//global paneltvar `time2'
 	//mata mata describe
 
@@ -919,7 +1026,7 @@ if ("`time'"==""){
 	if(`"`wxvars'"'!=""){
 	  if ("`wxmat'"!=""){	  	
 		  parsespmat0 `wxmat' 
-		  parsespmat1 `wxmat' `r(ldot)' aname(wx_ina)
+		  parsespmat1 `wxmat' `r(ldot)' aname(wx_ina) normalize(`normalize')
 
 		  checkspmat wx_ina, time(`time2') touse(`touse')  `delmissing' normalize(`normalize')
 		  qui genwvars `wxvars', aname(wx_ina) tvar(`time2') pref(Wx_)
@@ -953,8 +1060,10 @@ else{
 		local etaterm `etaterm' /eta_`v'
 	}
 
+	local eq7
 	foreach v in `endvars'{
 		local surterm `surterm' (`v': `v'=`iv')
+		local eq7 `eq7' `iv' _con
 	}
 	if `"`endvars'"'!=""{
 		local epost _end	
@@ -1007,6 +1116,15 @@ if (`"`endvars'"'!="") local lnsigv lnsigw
             (`lnsigv': `vhet')  (lnsigu: `uhet') `mu' ///
 	        (Wy:) `etaterm' `surterm', nopreserve `cns' `mlmodelopt' title(`title')
 	
+	local eq1 `wxvars2' `xvars'
+	if "`noconstant'"=="" local eq1 `wxvars2' `xvars' _cons
+	local eq2 `vhet' _cons
+	local eq3 `uhet'
+	local nocons = usubstr("`uhet'",strpos("`uhet'",",")+1,.)
+	if "`nocons'"==""|"`nocons'"=="." local eq3 `uhet' _cons
+	local eq4 `mu'
+	local eq5 Wy 
+	local eq6 `etaterm'
 	
 	if("`initial'"=="" & "`delve'"!="") { 
 		ml init b0,copy
@@ -1023,6 +1141,9 @@ if (`"`endvars'"'!="") local lnsigv lnsigw
    local mlmaxopt: list uniq mlmaxopt   
    `nolog' ml max, `mlmaxopt' 
 
+   ereturn local ivlist `ivlist'
+   ereturn local endvars `endvars'
+   ereturn local cost `cost'   
    ereturn local spatialwvars Wy_`yvar' `sendoutvar'
    ereturn local cmd spsfe
    ereturn local cmdbase ml
@@ -1031,23 +1152,57 @@ if (`"`endvars'"'!="") local lnsigv lnsigw
    ereturn local depvar `yvar'
    ereturn local function = cond("`cost'"!="","cost","production")
    ereturn local distribution=cond("`truncate'"=="","half normal","truncated normal") 
+   local ii1 1
+   forval i=1/7{
+	   if "eq`i'"!=""{
+		local ni : word count `eq`i''
+		local ni = `ni' - 1 + `ii1'
+		local eq`i' `ii1'..`ni'
+		eret local eq`i' `eq`i''
+		local ii1 = `ni' + 1
+	   }
+   }
+   eret scalar rmin=$rmin
+   eret scalar rmax=$rmax
+if ("`wmat'"!="" | "`wymat'"!=""){
+    global tranparametrs diparm(Wy, label("rho") prob function($rmin/(1+exp(@))+$rmax*exp(@)/(1+exp(@))) d(exp(@)*(($rmax-$rmin)/(1+exp(@))^2)))
+}
+else {
+    global tranparametrs ""
+}
 
-   global tranparametrs
+   Replay , `diopts' 
+   
+  
+/*
+ global tranparametrs
    Replay , `diopts'
-
      di " "
      di in gre "Note: rho = 1/(rmin+rmin*exp(Wy:_cons))+exp(Wy:_cons)/(rmax+rmax*exp(Wy:_cons)); "
      di in gre "      where rmin and rmax are the minimum and maximum eigenvalues of sp matrix"
 	 di " "
      di in gre "   ---convert Wy:_cons to the original form---  "
      di " "
+
           di in smcl in gr abbrev("variable",12) _col(14) "{c |}" /*
                */ _col(21) "Coef." _col(29) "Std. Err." _col(44) "t" /*
                */ _col(49) "P>|t|" _col(59) "[95% Conf. Interval]"
-          di in smcl in gr "{hline 13}{c +}{hline 64}"
-		  _diparm Wy, label("rho") prob function($rmin/(1+exp(@))+$rmax*exp(@)/(1+exp(@))) d(exp(@)*(($rmax-$rmin)/(1+exp(@))^2))
 
-   local rho = r(est)
+          di in smcl in gr "{hline 13}{c +}{hline 64}"
+
+          di in smcl in gr "{hline 13}{c +}{hline 64}"
+	_diparm Wy, label("rho") prob function($rmin/(1+exp(@))+$rmax*exp(@)/(1+exp(@))) d(exp(@)*(($rmax-$rmin)/(1+exp(@))^2))
+
+	 di " "
+	 di in gre "Note: rho = 1/(rmin+rmin*exp(Wy:_cons))+exp(Wy:_cons)/(rmax+rmax*exp(Wy:_cons)); "
+     di in gre "      where rmin and rmax are the minimum and maximum eigenvalues of sp matrix"
+	 */
+if ("`wmat'"!="" | "`wymat'"!=""){
+local wy_cons = _b[Wy:_cons]
+local rho = 1 / ($rmin + $rmin * exp(`wy_cons')) + exp(`wy_cons') / ($rmax + $rmax * exp(`wy_cons'))
+}
+  
+   //local rho = r(est)
    local rhose = r(se)
    ereturn scalar rho = `rho'
    ereturn scalar rho_se = `rhose' 
@@ -1205,13 +1360,16 @@ cap program drop tablenote
 program define tablenote 
 version 16 
 
-if `"$tranparametrs"'!=""{
-	   di "Note: rho = 1/(rmin+rmin*exp(Wy:_cons))+exp(Wy:_cons)/(rmax+rmax*exp(Wy:_cons)),"  
-	   di "      where rmin and rmax are the minimum and maximum eigenvalues of sp matrix"
-}
+
+
 if "`$end1'"!=""{
 	di "$end1"
 	di "$end2"
+}
+
+if `"$tranparametrs"'!=""{
+	   di "Note: rho = 1/(rmin+rmin*exp(Wy:_cons))+exp(Wy:_cons)/(rmax+rmax*exp(Wy:_cons)),"  
+	   di "      where rmin and rmax are the minimum and maximum eigenvalues of sp matrix"
 }
 
 end
@@ -1226,12 +1384,12 @@ version 16
 
 syntax varlist, aname(name) [tvar(varname) pref(string)]
 
-if `"`tvar'"'==""{
+if "`tvar'"==""{
 	tempvar tvar 
 	qui gen  byte `tavr'=1
 }
 
-if `"`pref'"'==""{
+if "`pref'"==""{
 	local pref W_
 }
 
@@ -1320,8 +1478,22 @@ end
 
 capture program drop parsespmat0
 program define parsespmat0,rclass
-syntax namelist(name=wnames),[MATA ARRAY] 
-if "`mata'"=="" & "`array'"==""{
+syntax anything,[MATA ARRAY DTA] 
+
+if "`mata'"!="" & "`array'"!="" {
+    di as error "only one of mata, array, dta should be specified"
+    error 198
+}
+if "`mata'"!="" & "`dta'"!="" {
+    di as error "only one of mata, array, dta should be specified"
+    error 198
+}
+if "`array'"!="" & "`dta'"!="" {
+    di as error "only one of mata, array, dta should be specified"
+    error 198
+}
+
+if "`mata'"=="" & "`array'"=="" & "`dta'"==""{
     return local ldot=","
 }
 
@@ -1330,11 +1502,13 @@ end
 
 capture program drop parsespmat1
 program define parsespmat1, rclass
-syntax namelist(name=wnames),aname(name) [MATA ARRAY] 
+syntax anything, aname(name) [MATA ARRAY DTA normalize(string)] 
+local wnames `anything'
 local nw: word count `wnames'
-
+qui pwf 
+local pwf  `r(currentframe)'
 local i=1
-if "`mata'"=="" & "`array'"==""{
+if "`mata'"=="" & "`array'"=="" & "`dta'"==""{
 	mata: `aname' = asarray_create("real")
 	foreach w in `wnames'{
 		tempname w`i' w`i'_id
@@ -1349,6 +1523,7 @@ if "`mata'"=="" & "`array'"==""{
 else if "`mata'"!=""{
 	mata: `aname' = asarray_create("real")
 	local matanames `wnames'
+
 	local i=1
 	foreach w in `matanames'{
 		mata: asarray(`aname',`i',`w')
@@ -1356,7 +1531,7 @@ else if "`mata'"!=""{
 	}
 
 }
-else{
+else if "`array'"!=""{
 	mata: _temparray = asarray_create("real")
 	mata: keys = asarray_keys(`wnames')
     mata: keys = sort(keys,1) // sort w in time order
@@ -1377,6 +1552,151 @@ else{
 	cap mata mata drop _temparray
 
  }
+ else{
+    local wnamescopy `wnames'
+    gettoken prefwn wnamescopy:wnamescopy,p(:)
+    if "`prefwn'"=="frame"{
+        gettoken prefwm wnamescopy:wnamescopy,p(:)
+        confirm frame `wnamescopy'
+
+    }
+    else{
+        tempname wnamescopy
+        qui frame create `wnamescopy'
+        frame `wnamescopy': qui use `wnames'
+    }
+        // qui pwf 
+        // local pwf  `r(pwf)'
+        // su $__time2__, meanonly
+        frame `wnamescopy' :{
+            // cap confirm var $__id0__
+            // if _rc{
+            //     di as error "errors: variable $__id0__ not found in using frame"
+            //     exit 198
+            // }
+            qui describe
+            local nvar = r(k)
+            if `nvar' < 3{
+                di as error "errors: at least 3 variables (id_i id_j weight) should be specified in frame"
+                exit 198
+            }
+            if `nvar' > 4{
+                di as error "errors: at most 4 variables (time id_i id_j weight) should be specified in frame"
+                exit 198
+            }
+            qui ds 
+            local varlist `r(varlist)'
+            if `nvar'==3{
+                // 取第一个变量
+                local idi: word 1 of `varlist'
+                local idj: word 2 of `varlist'
+                local value: word 3 of `varlist'
+
+                if "`idi'"!="id_i"{
+                    di as error "errors: the first variable should be id_i"
+                    exit 198
+                }
+
+                if "`idj'"!="id_j"{
+                    di as error "errors: the second variable should be id_j"
+                    exit 198
+                }
+                tempname tmpfr
+                frame `pwf': qui frame put  $id0__ $id2__, into(`tmpfr')
+				//frame `tmpfr': qui duplicates drop $id0__ $id2__, force
+                
+                frame `tmpfr': {
+					qui duplicates drop $id0__ $id2__, force
+                    tempfile idkey
+                    qui save `idkey', replace
+                }
+                rename id_i $id0__
+                qui merge m:1 $id0__ using `idkey'
+                qui count if _merge==2
+                if r(N)>0{
+                    di as error "errors: id in frame not found in the master dataset"
+                    exit 198
+                }
+                qui keep if _merge==3
+				qui drop _merge
+                rename $id2__ __i 
+                rename $id0__ id_i
+                rename id_j $id0__
+                qui merge m:1 $id0__ using `idkey'
+                qui count if _merge==2
+                if r(N)>0{
+                    di as error "errors: id in the master dataset not found in the frame"
+                    exit 198
+                }
+                qui keep if _merge==3
+				qui drop _merge
+                rename $id2__ __j 
+                rename $id0__ id_j
+                qui gen int $time2__ = 1
+                wvec2mat $time2__ __i __j `value', wname(`aname') normalize(`normalize')
+                local nw=1
+            }
+            if `nvar'==4{
+                local idi: word 2 of `varlist'
+                local idj: word 3 of `varlist'
+                local time: word 1 of `varlist'
+                local value: word 4 of `varlist'
+                cap confirm var $time0__
+                if _rc{
+                    di as error "errors: variable $time0__ not found in using frame"
+                    exit 198
+                }
+                if "`time'"!="${time0__}"{
+                    di as error "errors: the first variable should be ${time0__}"
+                    exit 198
+                }
+                if "`idi'"!="id_i"{
+                    di as error "errors: the second variable should be id_i"
+                    exit 198
+                }
+
+                if "`idj'"!="id_j"{
+                    di as error "errors: the third variable should be id_j"
+                    exit 198
+                }
+                tempname tmpfr
+                frame `pwf': qui frame put  $time0__ $time2__ $id0__ $id2__, into(`tmpfr')
+                frame `tmpfr': {
+                    tempfile idkey
+                    qui save `idkey', replace
+                }
+                rename id_i $id0__
+                qui merge m:1 $id0__ $time0__ using `idkey'  
+                qui count if _merge==2
+                if r(N)>0{
+                    di as error "errors: Observations the master dataset not found in the frame"
+                    exit 198
+                }
+                qui keep if _merge==3
+				qui drop _merge
+                rename $id2__ __i  
+                rename $id0__ id_i
+                rename id_j $id0__
+                qui merge m:1 $id0__ $time0__ using `idkey'  
+                qui count if _merge==2
+                if r(N)>0{
+                    di as error "errors: Observations in the master dataset not found in the frame"
+                    exit 198
+                }
+                qui keep if _merge==3
+				qui drop _merge
+                rename $id2__ __j
+                rename $id0__ id_j
+                wvec2mat $time2__ __i __j `value', wname(`aname') normalize(`normalize')
+                su $time2__, meanonly
+                local nw = r(max)
+            }
+        cap frame drop `tmpfr'
+		qui drop __i __j
+		cap drop $time2__ 
+        }
+ }
+
 
 return scalar nw=`nw'
 
@@ -1585,7 +1905,7 @@ foreach v in `endovars'{
 		qui replace `omega' = `cost'*`omega'	
 		
 		qui gen double `sigma2' = exp(2*`lnsigmav') + exp(2*`lnsigmau')
-		qui gen double `mustar' = (exp(2*`lnsigmav') *`mu' - exp(2*`lnsigmau')*`omega')/`sigma2'
+		qui gen double `mustar' = (exp(2*`lnsigmav') *`mu'*exp(`lnsigmau') - exp(2*`lnsigmau')*`omega')/`sigma2'
 		qui gen double `sigma2s' = exp(2*`lnsigmav')* exp(2*`lnsigmau')/`sigma2'
 		
 		qui gen double `varlist' = `mustar' + sqrt(`sigma2s')*normalden(`mustar'/sqrt(`sigma2s'))/normal(`mustar'/sqrt(`sigma2s'))
@@ -1650,4 +1970,57 @@ void function genweff(string scalar vars, transmorphic matrix arr, ///
 	dirusp = dirdata
 }
 
+end
+
+
+cap program drop wvec2mat
+program define wvec2mat, rclass
+version 18
+syntax varlist(min=4 max=4) [if] [in],wname(name) [normalize(string)]
+
+if "`normalize'"==""{
+	local ntype=0
+}
+else if "`normalize'"=="row"{
+	local ntype=1
+}
+else if "`normalize'"=="col"{
+	local ntype=2
+}
+else if "`normalize'"=="spectral"{
+	local ntype=3
+}
+else if "`normalize'"=="minmax"{
+	local ntype=4
+}
+else{
+	di as error "errors in normalize(), one of {row,col,spectral,minmax} should be specified. "
+	error 198
+}
+
+marksample touse 
+mata: wvec2mat("`varlist'", "`touse'",`wname'=.,`ntype')  
+
+
+end
+
+cap mata mata drop wvec2mat()
+mata:
+void wvec2mat(string scalar varlist, string scalar touse, transmorphic matrix wname,real scalar type) {
+	data = st_data(.,varlist,touse)
+    t = uniqrows(data[.,1])
+    i = uniqrows(data[.,2])
+    j = uniqrows(data[.,3])
+    n = (max(i)>max(j))*max(i)+(max(i)<=max(j))*max(j)
+    wname =  asarray_create("real")
+    //mat = J(n,n,0)
+    for (tt=1; tt<=length(t); tt++) {
+        mat = J(n,n,0)
+        nt = select(data,data[.,1]:==t[tt])
+        for (r=1; r<=rows(nt); r++) {
+            mat[nt[r,2],nt[r,3]] = nt[r,4]
+        }
+        asarray(wname, tt, Wnorm(mat,type,0))  
+    }
+}
 end
